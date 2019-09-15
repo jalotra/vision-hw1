@@ -3,7 +3,7 @@ from ctypes import *
 import math
 import random
 
-lib = CDLL(os.path.join(os.path.dirname(__file__), "libuwimg.so"), RTLD_GLOBAL)
+lib = CDLL(os.path.join(os.getcwd(), "libuwimg.so"), RTLD_GLOBAL)
 
 def c_array(ctype, values):
     arr = (ctype*len(values))()
@@ -59,7 +59,7 @@ feature_normalize = lib.feature_normalize
 feature_normalize.argtypes = [IMAGE]
 feature_normalize.restype = None
 
-clamp_image = lib.clamp_image
+clamp_image = lib.clamp_image                
 clamp_image.argtypes = [IMAGE]
 clamp_image.restype = None
 
