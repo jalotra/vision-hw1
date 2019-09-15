@@ -14,11 +14,19 @@ void set_pixel(image im, int x, int y, int c, float v);
 image copy_image(image im);
 image rgb_to_grayscale(image im);
 image grayscale_to_rgb(image im, float r, float g, float b);
+
+// Convert rgb to hsv
 void rgb_to_hsv(image im);
 void hsv_to_rgb(image im);
+// some functions that I defined
+// namely calculate_hue, calculate_saturation, calculate_value
+float calculate_hue(float a, float b , float c);
+float calculate_saturation(float a, float b , float c);
+float calculate_value(float a, float b , float c);
+
 void shift_image(image im, int c, float v);
 void scale_image(image im, int c, float v);
-void clamp_image(image im);
+void clamp_image(image im);                    // I have to implement this clamp function
 image get_channel(image im, int c);
 int same_image(image a, image b);
 image sub_image(image a, image b);
