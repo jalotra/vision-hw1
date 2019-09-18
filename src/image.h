@@ -23,6 +23,7 @@ void hsv_to_rgb(image im);
 float calculate_hue(float a, float b , float c);
 float calculate_saturation(float a, float b , float c);
 float calculate_value(float a, float b , float c);
+float box_filter_result(image im, image filter, int, int ,int, int);
 
 void shift_image(image im, int c, float v);
 void scale_image(image im, int c, float v);
