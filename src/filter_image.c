@@ -10,19 +10,17 @@ void l1_normalize(image im)
 {
     // TODO
     // TO normalize the sum of image across all channels to 1
-    for(int channel = 0; channel < im.c; channel++)
+    float sum_image_values = 0;
+    for(int i = 0; i < im.c*im.w*im.h; i++)
     {
-        for(int row = 0 ; row < im.h ; row++)
-        {
-            for(int column = 0; column < im.h; column++)
-            {
-                float pixel_value= get_pixel(im, column, row, channel);
-
-                set_pixel(im, column, row, channel, pixel_value/(im.w*im.h));
-        }
+        sum_image_values += im.data[i];
     }
-        
-}
+
+    for(int k = 0; k < im.c*im.w*im.h; k++)
+    {
+        im.data[k] /= sum_image_values; 
+    }
+
 }
 
 image make_box_filter(int w)
@@ -76,90 +74,41 @@ float box_filter_result(image im, image filter, int row, int column, int channel
 
 image convolve_image(image im, image filter, int preserve)
 {
-    // TODO
-    // return make_image(1,1,1);
+    // check filter is valid
+    assert(filter.c == im.c || filter.c == 1);
+    image f;
 
-    // Actually convolution is the the cross-correlation between the filter and the image
-
-    // 1. If the number of channels in the filter is same as the the number of channels in
-    // im image. Then compute the filter spatially on differnet channels and take the average of the
-    // pixel values at all the locations within image. So finally getting a 1 channel image.
-
-    // 2. If preserve is set to 1 the final image should have the number of channels to be presered.
-
-    //3. THe channel can have only 1 channel or same number of channels as that of image im
-    // Check this with the help of assert
-
-    // Checking if the number of channels in filter is 1 or equal to im.c
-    assert(filter.c == 1 || filter.c == im.c);
-
-
-     //Create a convolved image
-    image convolved_image;
-    if(preserve) convolved_image = make_image(im.w, im.h, im.c);
-    else convolved_image = make_image(im.w, im.h, im.c);
-
-    if(preserve == 0 )
-    {   
-
-        for(int channel = 0; channel < convolved_image.c; channel++)
-        {
-            for(int column = 0; column < convolved_image.w; column++)
-            {
-                // float value = 0;
-
-                for(int row = 0; row < convolved_image.h ; row++)
-                {   
-
-                    set_pixel(im, column, row, channel, box_filter_result(im, filter, row, column, channel, preserve));
-
-                    // value += get_pixel(im, column, row, channel);
-                    
-                }
-                // set_pixel(convolved_image, column, row, value, 1);
-
-            }
-        }
-
-        for(int column = 0; column < im.w ; column++)
-        { 
-            for(int row = 0; row < im.h ; row++)
-            {
-                float r_pixel = get_pixel(im, column, row, 0);
-                float g_pixel = get_pixel(im, column, row, 1);
-                float b_pixel = get_pixel(im, column, row, 2);
-
-                set_pixel(convolved_image, column, row, 0, (r_pixel + g_pixel + b_pixel)/3);
-
-            }
-        }
+   if(preserve) {
+        f = make_image(im.w, im.h, im.c);
+   } else {
+        f = make_image(im.w, im.h, 1);
     }
 
-
-    if(preserve == 1)
+    if(preserve)
     {
-
-        for(int channel = 0; channel < convolved_image.c; channel++)
+        for(int channel = 0; channel < f.c ; channel++)
         {
-            for(int column = 0; column < convolved_image.w; column++)
+            for(int row = 0; row < im.h ; row ++)
             {
-                // float value = 0;
-
-                for(int row = 0; row < convolved_image.h ; row++)
-                {   
-
-                    set_pixel(convolved_image, column, row, channel, box_filter_result(im, filter, row, column, channel, preserve));
-
-                    // value += get_pixel(im, column, row, channel) 
-                    
+                for(int col = 0; col < im.w ; col++)
+                {
+                    set_pixel(f, col, row, channel,  box_filter_result(im, filter, row, col, channel, preserve));
                 }
-                // set_pixel(convolved_image, column, row, value);
-
             }
         }
     }
-
-    return convolved_image;
+    else
+    {
+        for(int row = 0; row < im.h ; row ++)
+            {
+                for(int col = 0; col < im.w ; col++)
+                {
+                    set_pixel(f, col, row, 0,  box_filter_result(im, filter, row, col, 0 , preserve));
+                }
+            }
+    }
+    
+    return f;
 }
 
 
@@ -246,7 +195,31 @@ image make_emboss_filter()
 image make_gaussian_filter(float sigma)
 {
     // TODO
-    return make_image(1,1,1);
+    // return make_image(1,1,1);
+    // The probability distribution function looks like soetjimg 
+
+    // define the size of the filter // the filter will be a odd*odd filter
+    int s = 6*sigma ;
+    s = (s%2 == 0) ? s+1 : s; 
+    // Check the git repo for the function 
+    image gaussian_filter = make_image(s,s,1);
+
+    for(int row = 0; row < gaussian_filter.h ; row++)
+    {
+        for(int col = 0; col < gaussian_filter.w; col++)
+        {
+            int x = col - gaussian_filter.w/2;
+            int y = row - gaussian_filter.h/2;
+
+            float value = (1/(TWOPI*sigma*sigma))*exp(-(x*x + y*y)/(2*sigma*sigma));
+
+            set_pixel(gaussian_filter, col, row, 0, value);
+        }
+    }
+    // Final step is to normalize the gasussian function
+    l1_normalize(gaussian_filter);
+
+    return gaussian_filter;
 }
 
 image add_image(image a, image b)
@@ -297,28 +270,175 @@ image sub_image(image a, image b)
 image make_gx_filter()
 {
     // TODO
-    return make_image(1,1,1);
+    image gx_filter = make_image(3,3,1);
+
+    set_pixel(gx_filter, 0, 0, 0,-1);
+    set_pixel(gx_filter, 0, 1, 0 ,-2);
+    set_pixel(gx_filter, 0, 2, 0 ,-1);
+
+    set_pixel(gx_filter, 1, 0, 0, 0);
+    set_pixel(gx_filter, 1, 1, 0 , 0);
+    set_pixel(gx_filter, 1, 2, 0 , 0);
+
+    set_pixel(gx_filter, 2, 0, 0, 1);
+    set_pixel(gx_filter, 2, 1, 0 ,2);
+    set_pixel(gx_filter, 2, 2, 0 ,1);
+
+    // l1_normalize(gx_filter);
+
+    return gx_filter;
 }
 
 image make_gy_filter()
 {
     // TODO
-    return make_image(1,1,1);
+    // return make_image(1,1,1);
+    image gy_filter = make_image(3,3,1);
+
+    set_pixel(gy_filter, 0, 0, 0,-1);
+    set_pixel(gy_filter, 1, 0, 0 ,-2);
+    set_pixel(gy_filter, 2, 0, 0 ,-1);
+
+    set_pixel(gy_filter, 0, 1, 0, 0);
+    set_pixel(gy_filter, 1, 1, 0 , 0);
+    set_pixel(gy_filter, 2, 1, 0 , 0);
+
+    set_pixel(gy_filter, 0, 2, 0, 1);
+    set_pixel(gy_filter, 1, 2, 0 ,2);
+    set_pixel(gy_filter, 2, 2, 0 ,1);
+
+
+    return gy_filter;
+}
+
+float three_way_max_finder(float a, float b, float c)
+{
+    return (a > b) ? ( (a > c) ? a : c) : ( (b > c) ? b : c) ;
+}
+
+float three_way_min_finder(float a, float b, float c)
+{
+    return (a < b) ? ( (a < c) ? a : c) : ( (b < c) ? b : c) ;
 }
 
 void feature_normalize(image im)
 {
     // TODO
+    float min_r = get_pixel(im, 0, 0, 0);
+    float min_g = get_pixel(im, 0, 0, 1);
+    float min_b = get_pixel(im, 0, 0, 2);
+
+    float max_r = get_pixel(im, 0, 0, 0);
+    float max_g = get_pixel(im, 0, 0, 1);
+    float max_b = get_pixel(im, 0, 0, 2);
+
+    float r_value, g_value, b_value;
+    for(int row = 0; row < im.h; row++)
+    {
+        for(int col = 0; col < im.w; col++)
+        {   
+            r_value = get_pixel(im, col, row, 0);
+            g_value = get_pixel(im, col, row, 1);
+            b_value = get_pixel(im, col, row, 2);
+
+            min_r = ( r_value <= min_r) ? r_value : min_r;
+            min_g = ( g_value <= min_g) ? g_value : min_g;
+            min_b = ( b_value <= min_b) ? b_value : min_b;
+
+            max_r = ( r_value >= max_r) ? r_value : max_r;
+            max_g = ( g_value >= max_g) ? g_value : max_g;
+            max_b = ( b_value >= max_b) ? b_value : max_b;
+
+        }
+    }
+
+    float min_across_all_channels = three_way_min_finder(min_r, min_b, min_g);
+    float max_across_all_channels = three_way_max_finder(max_b, max_g, max_r);
+
+    for(int row = 0; row < im.h ; row++)
+    {
+        for(int col = 0; col < im.w ; col++)
+        {
+            set_pixel(im, col, row, 0, (get_pixel(im, col , row, 0) - min_across_all_channels)/(max_across_all_channels - min_across_all_channels));
+            set_pixel(im, col, row, 1, (get_pixel(im, col , row, 1) - min_across_all_channels)/(max_across_all_channels - min_across_all_channels));
+            set_pixel(im, col, row, 2, (get_pixel(im, col , row, 2) - min_across_all_channels)/(max_across_all_channels - min_across_all_channels));
+        }
+    }
 }
 
 image *sobel_image(image im)
 {
     // TODO
-    return calloc(2, sizeof(image));
+    // return calloc(2, sizeof(image));
+
+    image *return_pointer = calloc(2, sizeof(image));        // creates two objects of the type image 
+
+    return_pointer[0] = make_image(im.w, im.h, im.c);
+    return_pointer[1] = make_image(im.w, im.h, im.c);
+
+    image gx_filter = make_gx_filter();
+    image gy_filter = make_gy_filter();
+
+    // Now I have to run these filters over the image im and calculate the magnitude 
+    // and angle between 
+
+    image gx = convolve_image(im, gx_filter, 0);
+    image gy = convolve_image(im, gy_filter, 0);
+
+    for(int channel = 0 ; channel < im.c; channel ++)
+    {
+        for(int row = 0; row < im.h ; row++)
+        {
+            for(int col = 0; col < im.w; col++)
+            {
+                float x_value = get_pixel(gx, col, row, channel);
+                float y_value = get_pixel(gy, col, row, channel);
+
+                float val = x_value*x_value + y_value*y_value;
+                set_pixel(return_pointer[0], col, row, channel, sqrt(val));
+
+                float angle_value = atan(y_value/x_value);
+                set_pixel(return_pointer[1], col, row, channel, angle_value); 
+            }
+        }
+    }
+
+    return return_pointer;
+
 }
 
 image colorize_sobel(image im)
 {
     // TODO
-    return make_image(1,1,1);
+    // return make_image(1,1,1);
+
+    image new_image = make_image(im.w, im.h, im.c);
+
+    // Create a new image of size
+    image gx_filter = make_gx_filter();
+    image gy_filter = make_gy_filter();
+
+    // Now I have to run these filters over the image im and calculate the magnitude 
+    // and angle between 
+
+    image gx = convolve_image(im, gx_filter, 1);
+    image gy = convolve_image(im, gy_filter, 1);
+
+    for(int channel = 0 ; channel < im.c; channel ++)
+    {
+        for(int row = 0; row < im.h ; row++)
+        {
+            for(int col = 0; col < im.w; col++)
+            {
+                float x_value = get_pixel(gx, col, row, channel);
+                float y_value = get_pixel(gy, col, row, channel);
+
+                float val = x_value*x_value + y_value*y_value;
+                set_pixel(new_image, col, row, channel, sqrt(val));
+
+            }
+        }
+    }
+
+    return new_image;
 }
